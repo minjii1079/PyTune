@@ -19,7 +19,16 @@ WINDOW_T_LENGTH = WINDOW_SIZE / SAMPLE_FREQUENCY # Period of the window in secon
 SAMPLE_T_LENGTH = 1 / SAMPLE_FREQUENCY # Period of the sample in seconds
 window_samples = [0 for _ in range(WINDOW_SIZE)]
 
+# Note detection params
+CONCERT_PITCH = 440.0   # Frequency of A4 as equal temperament standard
+ALL_NOTES = ["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"]
 
+# Function to get the closest note to a given frequency
+def get_closest_note(frequency):
+    i = int(np.round(12 * np.log2(frequency / CONCERT_PITCH)))  # Number of half steps from A4
+    closest_note = ALL_NOTES[i % 12] + str(4 + (i + 9) // 12)   # Note name with octave
+    closest_pitch = CONCERT_PITCH * 2**(i / 12) # Equal temperament formula
+    return closest_note, closest_pitch
 
 audio = pyaudio.PyAudio()
 

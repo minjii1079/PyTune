@@ -1,12 +1,12 @@
-# Author: Kevin Karunaratna
 # Inspired by chcicken's "Programming a Guitar Tuner with Python"
-# A guitar tuner script that worksy by continuously recording audio from the microphone and
+# A guitar tuner script that works by continuously recording audio from the microphone and
 # processing it in real-time to detect the closest note using DFT.
 
 import pyaudio
 import os
 import numpy as np
 import scipy.fftpack
+import time
 import keyboard
 
 # Audio params
@@ -16,7 +16,7 @@ import keyboard
 #CHUNK = 1024
 #WAVE_OUTPUT_FILENAME = "continuous_recording.wav"
 
-SAMPLE_FREQUENCY = 44100
+SAMPLE_FREQUENCY = 88200
 WINDOW_SIZE = 44100 # 1 second window
 WINDOW_STEP = 21050 # 0.5 second step
 WINDOW_T_LENGTH = WINDOW_SIZE / SAMPLE_FREQUENCY # Window period (s)
@@ -36,13 +36,15 @@ def get_closest_note(frequency):
 
 def callback(in_data, frame_count, time_info, status):
     global window_samples
+    start_time = time.time() # Start ms timer
     if status:
         print(status)
     indata = np.frombuffer(in_data, dtype=np.float32)
     if any(indata):
         window_samples = np.concatenate((window_samples, indata)) # Append new samples to the window
         window_samples = window_samples[len(indata):] # Remove old samples to maintain window size 
-        magnitudes = abs(scipy.fftpack.fft(window_samples)[:len(window_samples)//2]) # Compute the FFT and take the magnitude. Only the first half since the other half is irrelevant
+        window_function = np.hanning(len(window_samples)) # Hanning window to reduce spectral leakage
+        magnitudes = abs(scipy.fftpack.fft(window_samples*window_function)[:len(window_samples)//2]) # Compute the FFT and take the magnitude. Only the first half since the other half is irrelevant
 
         for i in range(int(62/(SAMPLE_FREQUENCY/WINDOW_SIZE))): # Remove mains hum which is less than 62 Hz
             magnitudes[i] = 0
@@ -56,6 +58,8 @@ def callback(in_data, frame_count, time_info, status):
     
     else:
         print("No input")
+    end_time = time.time()
+    print(f"Processing Time: {(end_time - start_time)*1000:.2f} ms")
     return (None, pyaudio.paContinue)
 
 audio = pyaudio.PyAudio()
@@ -67,6 +71,7 @@ stream = audio.open(format=pyaudio.paFloat32,
                     input=True,
                     frames_per_buffer=WINDOW_STEP,
                     stream_callback=callback)
+
 # Start the stream
 try:
     stream.start_stream()
